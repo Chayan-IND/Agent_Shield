@@ -17,4 +17,9 @@ export const api = {
   toggleAgent: (id) => request(`/agents/${id}/toggle`, { method: "PATCH" }),
   getTransactions: () => request("/transactions"),
   createTransaction: (body) => request("/transactions", { method: "POST", body: JSON.stringify(body) }),
+  resolveTransaction: (id, action, addTrusted = false) =>
+    request(`/transactions/${id}/resolve`, {
+      method: "PATCH",
+      body: JSON.stringify({ action, addTrusted }),
+    }),
 };

@@ -9,6 +9,16 @@ export default function Logs() {
   const load = () => api.getTransactions().then(setLogs).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
 
+  const resolve = async (id, action, addTrusted = false) => {
+    setError("");
+    try {
+      await api.resolveTransaction(id, action, addTrusted);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   return (
     <>
       <div className="row-between">
@@ -22,7 +32,10 @@ export default function Logs() {
         ) : (
           <table>
             <thead>
-              <tr><th>Date</th><th>Agent</th><th>Recipient</th><th>Amount</th><th>Decision</th><th>Reason</th></tr>
+              <tr>
+                <th>Date</th><th>Agent</th><th>Recipient</th><th>Amount</th>
+                <th>Decision</th><th>Reason</th><th>Action</th>
+              </tr>
             </thead>
             <tbody>
               {logs.map((t) => (
@@ -33,6 +46,17 @@ export default function Logs() {
                   <td>₹{t.amount.toLocaleString("en-IN")}</td>
                   <td><StatusBadge status={t.decision} /></td>
                   <td className="muted">{t.reason}</td>
+                  <td>
+                    {t.decision === "PAUSED" ? (
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <button className="btn" onClick={() => resolve(t._id, "approve")}>Approve</button>
+                        <button className="btn" onClick={() => resolve(t._id, "approve", true)}>Approve + trust</button>
+                        <button className="btn" onClick={() => resolve(t._id, "reject")}>Reject</button>
+                      </div>
+                    ) : (
+                      <span className="muted">-</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

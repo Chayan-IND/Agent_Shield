@@ -38,6 +38,48 @@ exports.createTransaction = (req, res) => {
   res.status(201).json(tx);
 };
 
+// Human-in-the-loop: user approves or rejects a PAUSED transaction
+exports.resolveTransaction = (req, res) => {
+  const { action, addTrusted } = req.body;
+
+  if (action !== "approve" && action !== "reject") {
+    return res.status(400).json({ message: "Action must be approve or reject" });
+  }
+
+  const db = read();
+  const tx = db.transactions.find((t) => t._id === req.params.id);
+  if (!tx) return res.status(404).json({ message: "Transaction not found" });
+  if (tx.decision !== "PAUSED") {
+    return res.status(400).json({ message: "Only PAUSED transactions can be resolved" });
+  }
+
+  const agent = db.agents.find((a) => a._id === tx.agent);
+
+  if (action === "approve") {
+    if (!agent) return res.status(400).json({ message: "Agent no longer exists" });
+    if (!agent.isActive) {
+      return res.status(400).json({ message: "Agent is deactivated, activate it before approving" });
+    }
+    tx.decision = "APPROVED";
+    tx.reason = "Approved by user";
+
+    if (addTrusted) {
+      const r = tx.recipient.toLowerCase();
+      if (!agent.trustedRecipients.includes(r)) {
+        agent.trustedRecipients.push(r);
+        tx.reason = "Approved by user, recipient added to trusted list";
+      }
+    }
+  } else {
+    tx.decision = "BLOCKED";
+    tx.reason = "Rejected by user";
+  }
+
+  tx.resolvedAt = new Date().toISOString();
+  write(db);
+  res.json(tx);
+};
+
 exports.getTransactions = (req, res) => {
   res.json(read().transactions.slice().reverse().slice(0, 200));
 };
