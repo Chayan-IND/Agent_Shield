@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 
+function riskColor(score) {
+  if (score >= 60) return "#dc2626";
+  if (score >= 30) return "#d97706";
+  return "#16a34a";
+}
+
 export default function Simulator() {
   const [agents, setAgents] = useState([]);
   const [form, setForm] = useState({ agentId: "", recipient: "", amount: "" });
@@ -64,6 +70,29 @@ export default function Simulator() {
           <StatusBadge status={result.decision} />
           <h2>₹{result.amount.toLocaleString("en-IN")} to {result.recipient}</h2>
           <p>{result.reason}</p>
+
+          {result.riskScore !== undefined && (
+            <div style={{ marginTop: "12px" }}>
+              <strong style={{ color: riskColor(result.riskScore), fontSize: "18px" }}>
+                Risk score: {result.riskScore}/100
+              </strong>
+              {result.anomaly && (
+                <div style={{ color: "#dc2626", fontWeight: 600, marginTop: "4px" }}>
+                  ⚠ Anomaly detected
+                </div>
+              )}
+              {result.riskFactors && result.riskFactors.length > 0 && (
+                <ul style={{ margin: "8px 0 0", paddingLeft: "20px" }}>
+                  {result.riskFactors.map((f, i) => (
+                    <li key={i} className="muted">{f}</li>
+                  ))}
+                </ul>
+              )}
+              {result.riskFactors && result.riskFactors.length === 0 && (
+                <p className="muted" style={{ margin: "8px 0 0" }}>No risk factors found.</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </>
