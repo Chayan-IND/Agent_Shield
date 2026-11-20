@@ -11,6 +11,60 @@ function evaluate(agent, recipient, amount) {
   return { decision: "APPROVED", reason: "Passed all checks" };
 }
 
+// Simple risk score (0-100) plus anomaly flag
+function computeRisk(db, agent, recipient, amount) {
+  if (!agent) return { riskScore: 100, riskFactors: ["Unknown agent identity"], anomaly: false };
+  if (!agent.isActive) return { riskScore: 100, riskFactors: ["Agent is deactivated"], anomaly: false };
+
+  let score = 0;
+  const factors = [];
+
+  // 1. Amount compared to the spending limit
+  const pct = (amount / agent.spendingLimit) * 100;
+  if (pct > 100) {
+    score += 50;
+    factors.push(`Amount is ${Math.round(pct)}% of limit (over limit)`);
+  } else if (pct >= 80) {
+    score += 30;
+    factors.push(`Amount is ${Math.round(pct)}% of limit`);
+  } else if (pct >= 50) {
+    score += 15;
+    factors.push(`Amount is ${Math.round(pct)}% of limit`);
+  }
+
+  // 2. Unknown recipient
+  if (!agent.trustedRecipients.includes(recipient.toLowerCase())) {
+    score += 30;
+    factors.push("Unknown recipient");
+  }
+
+  // 3. Many transactions in a short time (last 10 minutes)
+  const past = db.transactions.filter((t) => t.agent === agent._id);
+  const now = Date.now();
+  const recent = past.filter((t) => now - new Date(t.createdAt).getTime() < 10 * 60 * 1000).length;
+  if (recent >= 5) {
+    score += 25;
+    factors.push(`${recent} transactions in the last 10 minutes`);
+  } else if (recent >= 3) {
+    score += 15;
+    factors.push(`${recent} transactions in the last 10 minutes`);
+  }
+
+  // 4. Anomaly: amount much higher than this agent's average
+  let anomaly = false;
+  const counted = past.filter((t) => t.decision !== "BLOCKED");
+  if (counted.length >= 3) {
+    const avg = counted.reduce((sum, t) => sum + t.amount, 0) / counted.length;
+    if (amount > avg * 3) {
+      anomaly = true;
+      score += 25;
+      factors.push(`Amount is ${(amount / avg).toFixed(1)}x the agent's average (₹${Math.round(avg)})`);
+    }
+  }
+
+  return { riskScore: Math.min(score, 100), riskFactors: factors, anomaly };
+}
+
 exports.createTransaction = (req, res) => {
   const { agentId, recipient } = req.body;
   const amount = Number(req.body.amount);
@@ -22,6 +76,7 @@ exports.createTransaction = (req, res) => {
   const db = read();
   const agent = db.agents.find((a) => a._id === agentId);
   const { decision, reason } = evaluate(agent, recipient.trim(), amount);
+  const { riskScore, riskFactors, anomaly } = computeRisk(db, agent, recipient.trim(), amount);
 
   const tx = {
     _id: newId(),
@@ -31,6 +86,9 @@ exports.createTransaction = (req, res) => {
     amount,
     decision,
     reason,
+    riskScore,
+    riskFactors,
+    anomaly,
     createdAt: new Date().toISOString(),
   };
   db.transactions.push(tx);

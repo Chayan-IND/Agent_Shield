@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 
+function riskColor(score) {
+  if (score >= 60) return "#dc2626";
+  if (score >= 30) return "#d97706";
+  return "#16a34a";
+}
+
 export default function Logs() {
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState("");
@@ -34,7 +40,7 @@ export default function Logs() {
             <thead>
               <tr>
                 <th>Date</th><th>Agent</th><th>Recipient</th><th>Amount</th>
-                <th>Decision</th><th>Reason</th><th>Action</th>
+                <th>Risk</th><th>Decision</th><th>Reason</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -44,6 +50,23 @@ export default function Logs() {
                   <td>{t.agentName}</td>
                   <td>{t.recipient}</td>
                   <td>₹{t.amount.toLocaleString("en-IN")}</td>
+                  <td>
+                    {t.riskScore === undefined ? (
+                      <span className="muted">-</span>
+                    ) : (
+                      <div>
+                        <strong style={{ color: riskColor(t.riskScore) }}>{t.riskScore}/100</strong>
+                        {t.anomaly && (
+                          <div style={{ color: "#dc2626", fontSize: "12px", fontWeight: 600 }}>
+                            ⚠ Anomaly
+                          </div>
+                        )}
+                        {t.riskFactors && t.riskFactors.map((f, i) => (
+                          <div key={i} className="muted" style={{ fontSize: "12px" }}>{f}</div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td><StatusBadge status={t.decision} /></td>
                   <td className="muted">{t.reason}</td>
                   <td>
