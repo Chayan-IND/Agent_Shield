@@ -3,6 +3,7 @@ const c = require("../controllers/agentController");
 
 router.get("/", c.getAgents);
 router.post("/", c.createAgent);
+router.patch("/deactivate-all", c.deactivateAll);
 router.patch("/:id/limit", c.updateLimit);
 router.patch("/:id/toggle", c.toggleAgent);
 

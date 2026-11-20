@@ -15,6 +15,7 @@ export const api = {
   updateLimit: (id, spendingLimit) =>
     request(`/agents/${id}/limit`, { method: "PATCH", body: JSON.stringify({ spendingLimit }) }),
   toggleAgent: (id) => request(`/agents/${id}/toggle`, { method: "PATCH" }),
+  deactivateAll: () => request("/agents/deactivate-all", { method: "PATCH" }),
   getTransactions: () => request("/transactions"),
   createTransaction: (body) => request("/transactions", { method: "POST", body: JSON.stringify(body) }),
   resolveTransaction: (id, action, addTrusted = false) =>

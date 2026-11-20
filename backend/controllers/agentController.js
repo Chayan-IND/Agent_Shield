@@ -51,3 +51,17 @@ exports.toggleAgent = (req, res) => {
   write(db);
   res.json(agent);
 };
+
+// Emergency revoke: deactivate every active agent in one call
+exports.deactivateAll = (req, res) => {
+  const db = read();
+  let count = 0;
+  db.agents.forEach((a) => {
+    if (a.isActive) {
+      a.isActive = false;
+      count++;
+    }
+  });
+  write(db);
+  res.json({ deactivated: count });
+};
